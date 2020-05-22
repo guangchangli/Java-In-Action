@@ -460,3 +460,17 @@ Java将操作系统中的运行和就绪两个状态合并称为运行状态
 通过提前调用 Thread.setDaemon(true) 将线程设置为 Daemon 线程，⚠️ finally 里面不会执行，因为虚拟机退出了
 ```
 
+### 中断
+
+```
+sleep 会清除中断标志位 
+```
+
+### 线程间通信
+
+```
+volatile 主要是可见性 synchronized 排它
+```
+
+![monitor](/Users/lgc/Documents/picture-md/monitor.png)
+
