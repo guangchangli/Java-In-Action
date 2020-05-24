@@ -1,4 +1,4 @@
-package com.aladdin.basic;
+package com.aladdin.basic.data;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;

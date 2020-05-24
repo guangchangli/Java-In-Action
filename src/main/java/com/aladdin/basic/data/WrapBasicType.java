@@ -1,4 +1,4 @@
-package com.aladdin.basic;
+package com.aladdin.basic.data;
 
 import org.omg.CORBA.IntHolder;
 
@@ -7,6 +7,8 @@ import org.omg.CORBA.IntHolder;
  * 包装器可以为 null 自动装箱可能会  npe
  * 装箱和拆箱是编译器认可的 在生成字节码时插入必要方法调用
  * org.omg.CORBA holder
+ * valueOf 调用了 parseInt
+ * valueOf 返回包装类型 处理效率低
  * @author lgc
  */
 public class WrapBasicType {

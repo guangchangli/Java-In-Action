@@ -11,6 +11,7 @@ import java.util.Objects;
  *   不是唯一的
  *   hash 由对象导出 重新定义equals 必须重新定义hashcode方法 需要插入到散列表
  *   同时重写因为hashMap hashSet 需要进行比较解决冲突
+ *  泛型 toString() 循环引用可能无限递归 ObjectAnalyzer 记录已经访问过的对象
  * @author lgc
  */
 public class EqualsHashToString{
@@ -27,7 +28,6 @@ public class EqualsHashToString{
         System.out.println(equals1.equals(equals2));
         System.out.println(equals1);
         System.out.println(Arrays.toString(arr1));
-
     }
 
     public EqualsHashToString(String name) {

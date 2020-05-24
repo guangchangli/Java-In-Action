@@ -1,4 +1,4 @@
-package com.aladdin.basic.generic;
+package com.aladdin.basic.data;
 
 import com.google.common.collect.Lists;
 
@@ -7,7 +7,7 @@ import java.util.ArrayList;
 /**
  * @author lgc
  */
-public class ArrayLIstDemo {
+public class ArrayListDemo {
 
     public static void main(String[] args) {
         ArrayList<Object> list = Lists.newArrayList();

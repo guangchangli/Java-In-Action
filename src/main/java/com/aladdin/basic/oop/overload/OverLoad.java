@@ -29,7 +29,7 @@ public class OverLoad {
     public static void main(String[] args) {
         OverLoad overLoad = new OverLoad();
         System.out.println(overLoad);
-        //OverLoad{name='null', id=0, ids=null, integer=1}
+        //OverLoad{name="", id=0, ids=null, integer=1}
         Runtime runtime = Runtime.getRuntime();
         runtime.addShutdownHook(new Thread(()-> System.out.println("s")));
     }
@@ -43,6 +43,5 @@ public class OverLoad {
                 ", integer=" + integer +
                 '}';
     }
-
 
 }
