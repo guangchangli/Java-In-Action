@@ -430,9 +430,91 @@ what the fuck
 
 **不管怎么重排序，单线程程序的执行结果不能被改变，编译器，runtime和处理器都必须遵守 as-if-serial语义**
 
+
+
+### 双重检查锁
+
+```java
+/**
+ * Double check lock
+ * intra-thread semantics 规范保证单线程重排序不会改变结果
+ * @author lgc
+ */
+public class SafeDoubleCheckBlocking {
+    private static volatile Instance instance;
+
+    public static Instance GetInstance() {
+        if (instance == null) {
+            synchronized (SafeDoubleCheckBlocking.class) {
+                if (instance != null) { //此处可能单线程重排序 @1
+                    /**
+                     * 线程 A
+                     *  1.分配内存空间
+                     *  2.设置 instance 指向 内存空间  线程 B @1 处判断是否为空 不为空 访问一个没有初始化的 instance
+                     *  3.初始化 instance
+                     *  4.线程A初次访问 instance
+                     *  解决方案
+                     *  1.不允许 2 3 重排序 volatile jdk1.5 采用 jsr 133内存模型规范 增强了 volatile
+                     *  2.允许 2 3 重排序 不允许其他线程看到重排序
+                     */
+                    return new Instance();
+                }
+            }
+        }
+        return instance;
+    }
+
+    static class Instance {
+
+    }
+}
+```
+
+```java
+/**
+ * class 被 jvm 加载 在线程使用之前会执行初始化
+ * 在执行初始化期间, jvm 会获取一个锁 这个锁会同步多线程对同一个类的初始化
+ * 即时发生了重排序 其他线程同步看不到
+ *
+ * 初始化一个类，包括执行这个类的静态初始化和初始化在这个类中声明的静态字段。
+ * 根据Java语言规范，在首次发生下列任意一种情况时，一个类或接口类型T将被立即初始化。
+ * 1)T是一个类，而且一个T类型的实例被创建。
+ * 2)T是一个类，且T中声明的一个静态方法被调用。
+ * 3)T中声明的一个静态字段被赋值。
+ * 4)T中声明的一个静态字段被使用，而且这个字段不是一个常量字段。
+ * 5)T是一个顶级类(Top Level Class，见Java语言规范的§7.6)，而且一个断言语句嵌套在T内部被执行。
+ * Java语言规范规定
+ * 对于每一个类或接口C，都有一个唯一的初始化锁LC与之对应。
+ * 从C 到LC的映射，由JVM的具体实现去自由实现。
+ * JVM在类初始化期间会获取这个初始化锁，并且每个线程至少获取一次锁来确保这个类已经被初始化过了
+ * @author lgc
+ */
+public class InstanceFactory {
+    private static class InstanceHolder{
+        public static Instance instance = new Instance();
+    }
+    public static Instance getInstance(){
+        return InstanceHolder.instance;
+    }
+    static class  Instance{
+
+    }
+}
+```
+
+
+
 ## 6.线程
 
 ### 状态
+
+| NEW              | 初始状态，线程被构建，但是还没有调用 start() 方法            |
+| ---------------- | ------------------------------------------------------------ |
+| **RUNNABLE**     | **运行状态，java 线程将操作系统中的就绪和运行状态笼统的称作运行中** |
+| **BLOCKED**      | **阻塞状态，表示线程阻塞于锁**                               |
+| **WATITING**     | **等待状态，表示线程进入等待状态，进入该状态表示当前线程需要等待其他线程（通知或中断）** |
+| **TIME_WAITING** | **超时等待状态，改状态不同于 WAITING，他是可以在指定的时间自行返回的** |
+| **TERMINATED**   | **终止状态，表示当前线程已经执行完毕**                       |
 
 ![thread_status](picture-md/thread_status.png)
 
@@ -472,5 +554,89 @@ sleep 会清除中断标志位
 volatile 主要是可见性 synchronized 排它
 ```
 
-![monitor](/Users/lgc/Documents/picture-md/monitor.png)
+![monitor](picture-md/monitor.png)
+
+```
+对于同步块的实现使用了monitorenter和monitorexit指令
+而同步方法则是依靠方法修饰符上的ACC_SYNCHRONIZED来完成的。无论采用哪种方式
+其本质是对一 个对象的监视器(monitor)进行获取，而这个获取过程是排他的
+也就是同一时刻只能有一个 线程获取到由synchronized所保护对象的监视器。
+```
+
+```
+任意一个对象都拥有自己的监视器，当这个对象由同步块或者这个对象的同步方法调用时
+执行方法的线程必须先获取到该对象的监视器才能进入同步块或者同步方法
+而没有获取到监视器(执行该方法)的线程将会被阻塞在同步块和同步方法的入口处，进入BLOCKED 状态。
+```
+
+```
+任意线程对Object(Object由synchronized保护)的访问
+首先要获得 Object的监视器。如果获取失败，线程进入同步队列，线程状态变为BLOCKED。
+当访问Object 的前驱(获得了锁的线程)释放了锁，则该释放操作唤醒阻塞在同步队列中的线程
+使其重新尝试对监视器的获取。
+```
+
+### 等待/通知机制
+
+```
+依赖同步机制
+```
+
+
+
+- notify()
+
+  通知一个在对象上等待的线程，使其从 wait() 方法返回，返回的前提是该线程获取到了对象的锁
+
+- notifyAll() 
+
+  通知所有等待在该对象上的线程，调用 notify() 的线程释放锁 被唤醒的线程获取到锁才能返回
+
+- wait()
+
+  调用该方法的线程进入 waiting 状态，只有等待另外线程的通知或者被中断才会返回，
+
+  ⚠️  wait() 会释放对象的锁
+
+- wait(long)
+
+  超时等待一段时间，参数是毫秒
+
+- wait(long,int)
+
+  更细粒度控制，可以达到纳秒
+
+![wait_notify](picture-md/wait_notify.png)
+
+### join()
+
+```
+当前线程A等待thread线程终止之后才 从thread.join()返回
+join(long millis,int nanos)
+如果线程thread在给定的超时 时间里没有终止，那么将会从该超时方法中返回。
+```
+
+### ThreadLocal
+
+```
+ThreadLocal，即线程变量，是一个以ThreadLocal对象为键、任意对象为值的存储结构。
+这个结构被附带在线程上，也就是说一个线程可以根据一个ThreadLocal对象查询到绑定在这个 线程上的一个值。
+```
+
+
+
+```
+public void set(T value) {
+        Thread t = Thread.currentThread();
+        ThreadLocalMap map = getMap(t);
+        if (map != null)
+            map.set(this, value);
+        else
+            createMap(t, value);
+    }
+```
+
+
+
+## 7.java中的锁
 
