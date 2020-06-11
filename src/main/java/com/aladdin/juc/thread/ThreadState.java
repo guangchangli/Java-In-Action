@@ -1,6 +1,8 @@
 package com.aladdin.juc.thread;
 
 
+import lombok.SneakyThrows;
+
 public class ThreadState {
     public static void main(String[] args) {
         new Thread(new TimeWaiting(), "TimeWaitingThread").start();
@@ -12,6 +14,7 @@ public class ThreadState {
 
     // 该线程不断地进行睡眠
     static class TimeWaiting implements Runnable {
+        @SneakyThrows
         @Override
         public void run() {
             while (true) {
@@ -38,6 +41,7 @@ public class ThreadState {
 
     // 该线程在Blocked.class实例上加锁后，不会释放该锁
     static class Blocked implements Runnable {
+        @SneakyThrows
         public void run() {
             synchronized (Blocked.class) {
                 while (true) {

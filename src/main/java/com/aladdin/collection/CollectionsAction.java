@@ -2,14 +2,12 @@ package com.aladdin.collection;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.*;
 
 /**
+ * Lists.reverse()
  * comparator 和 comparable 同时存在 comparator-compare 生效
  * Collections(immutable)
  * 0.sort <=> list.sort
@@ -49,44 +47,66 @@ public class CollectionsAction {
         Comparator<C> reversed1 = comparing.reversed();
         list.sort(reversed1);
         System.out.println(list);
-        //随机排序 shuffle
+        /**
+         * 随机排序 shuffle
+         */
         Collections.shuffle(list, new Random(2));
-        //binarySearch
+        /**
+         * binarySearch
+         */
         System.out.println(list);
         int a = Collections.binarySearch(list, new C("c", 5));
         System.out.println(a);
-        //max min
+        /**
+         * max min
+         */
         System.out.println(Collections.max(list));
         System.out.println(Collections.min(list));
-        //indexOfSubList
+        /**
+         * indexOfSubList
+         */
         List<String> list1 = Arrays.asList("one two three four five six siven".split(" "));
         System.out.println(list1);
         List<String> subList = Arrays.asList("three four five six".split(" "));
         System.out.println(Collections.indexOfSubList(list1, subList));
-        //lastIndexSubList
+        /**
+         * lastIndexSubList
+         */
         System.out.println(Collections.lastIndexOfSubList(list1, subList));
         System.out.println("---lastIndexSubList");
-        //replaceAll
+        /**
+         * replaceAll
+         */
         System.out.println(list1);
         System.out.println(Collections.replaceAll(list1, "six", "6"));
         System.out.println(list1);
-        //rotate 移动
+        /**
+         * rotate 移动
+         */
         Collections.rotate(list1, 2);
         System.out.println(list1);
-        //copy 同位覆盖
+        /**
+         * copy 同位覆盖
+         */
         List m = Arrays.asList("one two three four five six siven".split(" "));
         System.out.println(m);
         List n = Arrays.asList("我 是 复制过来的".split(" "));
         System.out.println(n);
         Collections.copy(m, n);
         System.out.println(m);
-        //swap
+        /**
+         * swap
+         */
         Collections.swap(list1,1,2);
         System.out.println(list1);
-        //fill
+        /**
+         * fill
+         */
         Collections.fill(n,"xx");
         System.out.println(n);
-        //nCopies
+        /**
+         * nCopies
+         */
         List<String> strings = Collections.nCopies(5, "5");
         System.out.println(strings);
 
@@ -96,22 +116,37 @@ public class CollectionsAction {
         System.out.println(Collections.emptyList());
         System.out.println(Collections.emptyMap());
         System.out.println(Collections.emptySet());
-        //newSetFromMap 引用空的 keySet
+        /**
+         * newSetFromMap 引用空的 keySet
+         */
         Map<Object, Boolean> objectObjectHashMap = Maps.newHashMap();
         Set<Object> objects = Collections.newSetFromMap(objectObjectHashMap);
         objectObjectHashMap.put("a", true);
         objectObjectHashMap.put("b", false);
         System.out.println(objects);
-        // immutable
+        /**
+         * immutable
+         */
         Map<Object, Object> objectObjectMap = Collections.emptyMap();
         //java.lang.UnsupportedOperationException
         //objectObjectMap.put("a",1);
+
+        /**
+         * Lists.reverse() 普通类型随机反转 f**k
+         */
+        ArrayList<String> arrayList = Lists.newArrayList();
+        arrayList.add("1");
+        arrayList.add("3");
+        arrayList.add("2");
+        System.out.println(arrayList);
+        System.out.println(Lists.reverse(arrayList));
     }
 
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
     @EqualsAndHashCode
+    @Builder
     static class C implements Comparable<C>, Comparator<C> {
         String name;
         int age;

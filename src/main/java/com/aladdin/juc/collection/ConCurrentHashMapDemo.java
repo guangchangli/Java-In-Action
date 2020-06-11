@@ -10,5 +10,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ConCurrentHashMapDemo {
     public static void main(String[] args) {
         ConcurrentHashMap<String, Object> concurrentHashMap = new ConcurrentHashMap<>();
+        concurrentHashMap.put("k",1);
     }
 }
