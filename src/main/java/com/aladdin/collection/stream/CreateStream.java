@@ -1,7 +1,6 @@
 package com.aladdin.collection.stream;
 
 import com.google.common.collect.Lists;
-
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -39,6 +38,7 @@ public class CreateStream {
                 filter(integer -> integer > 3).
                 distinct().skip(1).limit(2).
                 forEach(System.out::println);//5,6
+
         /**
          * map
          * mapToDouble

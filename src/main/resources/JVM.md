@@ -450,17 +450,277 @@ reference 存储的直接就是对象地址
 节省一次指针定位，速度更快
 ```
 
+### 6.伪共享（false sharing）
 
+**多线程修改独立变量在同一个缓存行时，会影响性能**
 
+##### MESI（缓存行资源状态）
 
+```
+出现跨核访问资源的时候，要通过内存控制器，传输会占用总线带宽资源
+```
 
+```
+M（修改，Modified）：本地处理器已经修改缓存行，即是脏行
+它的内容与内存中的内容不一样，并且此 cache 只有本地一个拷贝(专有)；
+E（专有，Exclusive）：缓存行内容和内存中的一样，而且其它处理器都没有这行数据；
+S（共享，Shared）：缓存行内容和内存中的一样, 有可能其它处理器也存在此缓存行的拷贝；
+I（无效，Invalid）：缓存行失效, 不能使用。
+```
 
+##### 状态转换
 
+```
+初始：一开始时，缓存行没有加载任何数据，所以它处于 I 状态。
+```
 
+```
+本地写（Local Write）：如果本地处理器写数据至处于 I 状态的缓存行，则缓存行的状态变成 M。
+```
 
+```
+本地读（Local Read）：如果本地处理器读取处于 I 状态的缓存行，很明显此缓存没有数据给它。
+此时分两种情况：
+(1)其它处理器的缓存里也没有此行数据，则从内存加载数据到此缓存行后，再将它设成 E 状态
+	表示只有我一家有这条数据，其它处理器都没有
+(2)其它处理器的缓存有此行数据，则将此缓存行的状态设为 S 状态
+（备注：如果处于M状态的缓存行，再由本地处理器写入/读出，状态是不会改变的）
+```
 
+```
+远程读（Remote Read）：
+假设我们有两个处理器 c1 和 c2，如果 c2 需要读另外一个处理器 c1 的缓存行内容
+c1 需要把它缓存行的内容通过内存控制器 (Memory Controller) 发送给 c2
+c2 接到后将相应的缓存行状态设为 S
+在设置之前，内存也得从总线上得到这份数据并保存。
+```
 
+```
+远程写（Remote Write）：其实确切地说不是远程写，而是 c2 得到 c1 的数据后，不是为了读，而是为了写
+也算是本地写，只是 c1 也拥有这份数据的拷贝，这该怎么办呢？
+c2 将发出一个 RFO (Request For Owner) 请求，它需要拥有这行数据的权限，其它处理器的相应缓存行设为 I
+除了它自已，谁不能动这行数据
+这保证了数据的安全，同时处理 RFO 请求以及设置I的过程将给写操作带来很大的性能消耗。
+```
 
+##### RFO
 
+```
+1. 线程的工作从一个处理器移到另一个处理器, 它操作的所有缓存行都需要移到新的处理器上。
+此后如果再写缓存行，则此缓存行在不同核上有多个拷贝，需要发送 RFO 请求了。
+2. 两个不同的处理器确实都需要操作相同的缓存行
+会发生 RFO
+```
 
+![false_sharing](picture-md/false_sharing.png)
 
+```
+一个运行在处理器 core1上的线程想要更新变量 X 的值
+同时另外一个运行在处理器 core2 上的线程想要更新变量 Y 的值
+但是，这两个频繁改动的变量都处于同一条缓存行。
+两个线程就会轮番发送 RFO 消息，占得此缓存行的拥有权。
+当 core1 取得了拥有权开始更新 X，则 core2 对应的缓存行需要设为 I 状态。
+当 core2 取得了拥有权开始更新 Y，则 core1 对应的缓存行需要设为 I 状态(失效态)。
+```
+
+```
+轮番夺取拥有权不但带来大量的 RFO 消息，而且如果某个线程需要读此行数据时，L1 和 L2 缓存上都是失效数据，只有 L3 缓存上是同步好的数据。
+读 L3 的数据非常影响性能。更坏的情况是跨槽读取，L3 都要 miss，只能从内存上加载。
+表面上 X 和 Y 都是被独立线程操作的，而且两操作之间也没有任何关系。只不过它们共享了一个缓存行，但所有竞争冲突都是来源于共享。
+```
+
+# 自动内存管理
+
+**哪些需要回收？**
+
+**什么时候回收？**
+
+**怎么回收？**
+
+### 对象已死
+
+```
+程序计数器、虚拟机栈、本地方法栈3个区域随线程而生，随线程而灭
+栈中的栈帧随着方法的进入和退出而有条不紊地执行着出栈和入栈操作
+每一个栈帧中分配多少内存基本上是在类结构确定下来时就已知的
+(尽管在运行期会由即时编译器进行一些优化，但在基于概念模型的讨论里，大体上可以认为是编译期可知的)
+因此这几个区域的内存分配和回收都具备确定性， 在这几个区域内就不需要过多考虑如何回收的问题
+当方法结束或者线程结束时，内存自然就跟随着 回收了。
+而Java堆和方法区这两个区域则有着很显著的不确定性:
+一个接口的多个实现类需要的内存可能 会不一样，一个方法所执行的不同条件分支所需要的内存也可能不一样
+只有处于运行期间，才能知道程序究竟会创建哪些对象，创建多少个对象
+这部分内存的分配和回收是动态的。垃圾收集器 所关注的正是这部分内存该如何管理
+```
+
+#### 引用计数算法
+
+```
+纯的引用计数 就很难解决对象之间相互循环引用的问题。会造成一堆垃圾
+```
+
+#### 可达性分析算法
+
+```
+通过 一系列称为“GC Roots”的根对象作为起始节点集
+从这些节点开始，根据引用关系向下搜索，搜索过程所走过的路径称为“引用链”(Reference Chain)
+如果某个对象到GC Roots间没有任何引用链相连
+或者用图论的话来说就是从GC Roots到这个对象不可达时
+则证明此对象是不可能再被使用的
+```
+
+固定可作为GC ROOTS的对象
+
+```
+1.在虚拟机栈(栈帧中的本地变量表)中引用的对象
+譬如各个线程被调用的方法堆栈中使用到的 参数、局部变量、临时变量等
+2.在方法区中类静态属性引用的对象，譬如Java类的引用类型静态变量
+3.在方法区中常量引用的对象，譬如字符串常量池(String Table)里的引用
+在本地方法栈中JNI(即通常所说的Native方法)引用的对象。 ·Java虚拟机内部的引用，如基本数据类型对应的Class对象，一些常驻的异常对象(比如
+NullPointExcepiton、OutOfMemoryError)等，还有系统类加载器。 ·所有被同步锁(synchronized关键字)持有的对象。 ·反映Java虚拟机内部情况的JM XBean、JVM TI中注册的回调、本地代码缓存等。
+```
+
+```java
+jvm stack
+native method stack
+runtime constant pool
+static references in method area
+clazz
+```
+
+### GC Algorithms
+
+- #### mark swap
+
+- #### copying
+
+- #### mark compact
+
+#### Mark Swap
+
+```
+标记清除
+简单，碎片化，类似windows 磁盘清理，没有连续的空间
+```
+
+#### Copying
+
+```
+拷贝
+没有碎片，效率高，浪费空间
+转移有用的内存，整体清除 
+```
+
+#### Mark Compact
+
+```
+标记压缩
+标记移动，效率低，无碎片
+```
+
+### Garbage Collectors
+
+![garbage-collector](picture-md/garbage-collectors.png)
+
+#### Serial
+
+```
+a stop-the-world copying collector which uses a single GC thread
+STW 在一个全局安全点 safe point 所有操作暂停，进行垃圾回收(单线程)
+```
+
+#### Serial Old
+
+```
+s stop-the-world 
+mark-sweep-compoact collector that uses a single GC thread
+```
+
+**Serial、Serial Old 在j dk 1.0 1.2 使用内存小，内存过大效率低，容易卡死**
+
+#### Parallel Scavenge
+
+```
+s stop-the-world copying collector which uses multiple GC threads
+```
+
+#### Parallel Old
+
+```
+a compacting collector that uses multiple GC threads
+```
+
+#### CMS
+
+```
+concurrent mark sweep 并发执行，工作线程和回收线程同时进行，低延迟
+a mostly concurrent,low-pause collector
+4 phases
+1.initial mark     初始标记 从跟节点跟踪引用
+2.concurrent mark  并发标记 标记垃圾 （耗时用并发提高效率）
+3.remark           重新标记 可能标记的垃圾又被引用 占少数
+4.concurrent sweep 并发清理
+```
+
+#### ParNew
+
+```
+Ps 变种 young 专门配合 CMS
+a mostly concurrent,low-pause collector
+copying colelctot which uses multiple GC threads
+if differs from "Parallel Scavenge" in that it has echancements that make it usable with CMS
+For example ,“ParNew" does the synchronization needed so that it can run during the concurrent phases of CMS
+默认线程数为 CPU 的核数
+```
+
+**分布式锁续命遇到垃圾回收器锁失效，采用G1**
+
+```
+ParNew ,Serial ,Parallel Scavenge
+CMS ,Serial Old ,Parallel Old 
+左边六个上下搭配使用
+分代模型
+G1 物理不分代，逻辑分代
+JDK8 PS PO
+JDk9、10、11、13 G1
+JDK11 可以使用 ZGC
+```
+
+![m_c](picture-md/m_c.png)
+
+```
+新生代回收快，存活相对较少
+采用复制算法，将 eden 复制到 survivor,清除 eden
+下一次回收 复制到第二个 survivor 同时清理前面两个区域
+当到达一定年龄(CMS 6,其他 15,最大是15，因为是4bit)复制到老年代 
+年轻代和老年代默认是1:2 可以调整 
+```
+
+#### 对象出生到消亡
+
+![o_b_d](picture-md/o_b_d.png)
+
+**进入老年代参数设置 -XX:MaxTenuringThreshold**
+
+```
+Xms Xmx 堆大小
+Xmn 年轻代大小
+MinorGC/YGC 年轻代空间耗尽触发
+MajorGC/FullGC 老年代无法继续分配内存触发，新生代和老年代同时进行回收
+```
+
+![oo_b_d](picture-md/oo_b_d.png)
+
+```
+能在栈上分配就在栈上分配
+如果足够大直接分配在 old 区
+不够大存在线程本地 TLAB(Thread Local Allocation Buffer)，多个线程往堆内放会存在争抢需要同步处理，耗性能，
+使用 TLAB 提高效率
+```
+
+## 调优
+
+**内存泄漏 内存不能被回收，漏了**
+
+**内存溢出，内存被占满回收不了，崩溃**
+
+## Arthas
