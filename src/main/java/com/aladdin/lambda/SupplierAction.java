@@ -10,12 +10,14 @@ import java.util.stream.Stream;
 public class SupplierAction {
     public static void main(String[] args) {
         System.out.println(supplierAction(SupplierAction::getString));
-        System.out.println(supplierAction(()->"sss"));
+        System.out.println(supplierAction(() -> "sss"));
     }
-    static String getString(){
-       return Stream.iterate(0, i -> i + 2).limit(5).collect(Collectors.toList()).toString();
+
+    static String getString() {
+        return Stream.iterate(0, i -> i + 2).limit(5).collect(Collectors.toList()).toString();
     }
-    static String supplierAction(Supplier<String> supplier){
+
+    static String supplierAction(Supplier<String> supplier) {
         return supplier.get();
     }
 }
