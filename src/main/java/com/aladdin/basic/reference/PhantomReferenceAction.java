@@ -7,6 +7,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
+ * 无法通过虚引用来获取对象的实例，虚引用不会对其生存时间构成影响
+ *
  * 管理堆外内存(正常是资源数据在操作系统内存，拷贝到 JVM 内存中通过 JVM 管理内存)
  * DirectByteBuffer 操作系统管理 直接引用内存 (io netty) 应用
  *

@@ -740,7 +740,17 @@ MajorGC/FullGC 老年代无法继续分配内存触发，新生代和老年代�
 
 ### ThreadLocal
 
-**不实用要 remove 清除 entry 主要是清理value,否则 value就泄漏了 **
+[深入理解](https://blog.csdn.net/cyxinda/article/details/93709143)
+
+**引用： 当一个引用类型的变量内部数据存储是一块内存区域的起始地址，就认为这个变量是引用**
+
+```
+1.key 只能是 ThreadLocal 对象 实现的线程隔离，当 ThreadLocal 失去强引用,生命周期只能活到下一次 gc 
+	这个时候 ThreadLocalMap 会出现 key 为 null 的 entry value 就会一直存在强引用链 造成内存泄漏
+2.ThreadPool 从 pool 中取出 可能会被复用，要保证在上一次结束的时候，关联的 ThreadLocal 清空，否则将产生脏数据
+```
+
+**不使用要 remove 清除 entry 主要是清理value,否则 value就泄漏了 **
 
 ```java
 public void set(T value) {
@@ -764,6 +774,73 @@ static class Entry extends WeakReference<ThreadLocal<?>> {
             }
         }
 ```
+
+```java
+private void set(ThreadLocal<?> key, Object value) {
+
+            // We don't use a fast path as with get() because it is at
+            // least as common to use set() to create new entries as
+            // it is to replace existing ones, in which case, a fast
+            // path would fail more often than not.
+
+            Entry[] tab = table;
+            int len = tab.length;
+            int i = key.threadLocalHashCode & (len-1);
+
+            for (Entry e = tab[i];
+                 e != null;
+                 e = tab[i = nextIndex(i, len)]) {
+                ThreadLocal<?> k = e.get();
+
+                if (k == key) {
+                    e.value = value;
+                    return;
+                }
+
+                if (k == null) {
+                    replaceStaleEntry(key, value, i);
+                    return;
+                }
+            }
+
+            tab[i] = new Entry(key, value);
+            int sz = ++size;
+            if (!cleanSomeSlots(i, sz) && sz >= threshold)
+                rehash();
+        }
+
+```
+
+```java
+private void remove(ThreadLocal<?> key) {
+            Entry[] tab = table;
+            int len = tab.length;
+            int i = key.threadLocalHashCode & (len-1);
+            for (Entry e = tab[i];
+                 e != null;
+                 e = tab[i = nextIndex(i, len)]) {
+                if (e.get() == key) {
+                    e.clear();
+                    expungeStaleEntry(i);
+                    return;
+                }
+            }
+        }
+```
+
+
+
+### 为什么使用弱引用？
+
+```
+使用强引用 ThreadLocal =null 对象回收的时候，因为 key 是强引用 不释放 会造成 entry 泄漏 ThreadLocal 对象无法回收
+使用弱引用 ThreadLcoal 对象的回收不会因为 Entry 对象里面的 key 影响
+				 新的 ThreadLocal 对象执行 set 方法的时候， 遍历map 会有很多 Entry.get() key 为空，说明这个Entry 可以删掉 
+				 replaceStaleEntry(key,value，i)替换旧的 entry
+WeakReference 就是不会影响被应用对象的GC回收行为 (只要对象被除WeakReference 对象之外所有的对象解除引用后，该对象就可以被回收)
+```
+
+
 
 ## OOM Heap 溢出，其他线程还能运行吗？
 

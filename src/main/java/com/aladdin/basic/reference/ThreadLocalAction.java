@@ -7,8 +7,8 @@ import java.util.concurrent.TimeUnit;
  * @author lgc
  */
 public class ThreadLocalAction {
-//    volatile static Person p = new Person();
-    static ThreadLocal<Person> threadLocal = new ThreadLocal<>();
+    //    volatile static Person p = new Person();
+    private static ThreadLocal<Person> threadLocal = new ThreadLocal<>();
 
 
     public static void main(String[] args) {
