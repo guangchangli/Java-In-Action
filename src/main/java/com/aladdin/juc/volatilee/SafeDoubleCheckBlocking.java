@@ -3,15 +3,17 @@ package com.aladdin.juc.volatilee;
 /**
  * Double check lock
  * intra-thread semantics 规范保证单线程重排序不会改变结果
+ *
  * @author lgc
  */
 public class SafeDoubleCheckBlocking {
     private static volatile Instance instance;
 
-    public static Instance GetInstance() {
+    public static Instance getInstance() {
         if (instance == null) {
-            synchronized (SafeDoubleCheckBlocking.class) {
-                if (instance != null) { //此处可能单线程重排序 @1
+            synchronized (Instance.class) {
+                if (instance == null) {
+                    //此处可能单线程重排序 @1
                     /**
                      * 线程 A
                      *  1.分配内存空间
@@ -22,7 +24,7 @@ public class SafeDoubleCheckBlocking {
                      *  1.不允许 2 3 重排序 volatile jdk1.5 采用 jsr 133内存模型规范 增强了 volatile
                      *  2.允许 2 3 重排序 不允许其他线程看到重排序
                      */
-                    return new Instance();
+                    instance = new Instance();
                 }
             }
         }
@@ -31,6 +33,15 @@ public class SafeDoubleCheckBlocking {
 
     static class Instance {
 
+    }
+
+
+    public static void main(String[] args) {
+        for (int i = 0; i < 100; i++) {
+            new Thread(() ->
+                    System.out.println(getInstance().hashCode())
+            ).start();
+        }
     }
 }
 

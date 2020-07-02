@@ -2,6 +2,9 @@ package com.aladdin.basic.data;
 
 import java.lang.reflect.Field;
 
+/**
+ * @author lgc
+ */
 public class Client {
     public static void main(String[] args) throws NoSuchFieldException, IllegalAccessException {
         Final test = new Final();
