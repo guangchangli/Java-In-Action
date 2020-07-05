@@ -3,6 +3,7 @@ package com.aladdin.lambda;
 import com.google.common.collect.Lists;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -21,6 +22,11 @@ public class PredicateAction {
         System.out.println("----equals----");
         equalAction(list, Predicate.isEqual("redis"));
         System.out.println(Predicate.isEqual("ss").test("sss"));
+        String[] s = {"1", "2", "3"};
+        filterAndOut(Arrays.asList(s),(s1)->{
+                    return false;
+                }
+        );
     }
 
     static void filterAndOut(List<String> list, Predicate<String> predicate) {

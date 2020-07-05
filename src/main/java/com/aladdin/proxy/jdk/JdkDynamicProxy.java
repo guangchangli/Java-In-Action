@@ -9,6 +9,7 @@ import java.lang.reflect.Proxy;
  * 然后将目标类在构造动态代理时作为参数传入，
  * 使代理对象持有目标对象，
  * 再通过代理对象的 InvocationHandler 实现动态代理的操作。
+ * @author lgc
  */
 public class JdkDynamicProxy{
     public static Object getProxy(Object target){

@@ -13,4 +13,8 @@ public class ReflectAction {
     public ReflectAction() {
         System.out.println("init");
     }
+
+    public static void main(String[] args) {
+
+    }
 }
