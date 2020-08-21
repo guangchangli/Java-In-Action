@@ -1,4 +1,4 @@
-package com.aladdin.io;
+package com.aladdin.io.aio;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
