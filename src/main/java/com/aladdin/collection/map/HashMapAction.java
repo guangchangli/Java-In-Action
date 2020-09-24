@@ -14,7 +14,6 @@ public class HashMapAction {
         Map<String, List<String>> map = new HashMap<>();
         List<String> list;
 
-        // 一般这样写
         list = map.get("list-1");
         if (list == null) {
             list = new LinkedList<>();
